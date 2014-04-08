@@ -96,11 +96,17 @@ void readkey(int fd, uint8_t** key, int* keylen) {
 
 }
 
-int main() {
+int main(int argc, char** argv) {
 
     int fd = -1;
 
-    printf("[+] Reading secret key from input.sec\n");
+    if(argc != 4) {
+        printf("Usage: $0 keyring.pub keyring.sec vanitybytes\n");
+        printf("Example: $0 input.pub input.sec $'\\xde\\xad\\xfa\\x11\n");
+        return 1;
+    }
+
+    printf("[+] Reading public key from %s\n", argv[1]);
     if ((fd = open("input.pub", O_RDONLY, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
@@ -113,8 +119,15 @@ int main() {
 
     printf("[*] Public Key Packet Size: %d\n", keylen);
 
-    uint8_t vanity[] = { 0xc0, 0x1a, 0xde };
-    uint32_t timestamp = find_vanity(vanity, 3, key, keylen);
+    uint8_t* vanity = (uint8_t*) argv[3];
+    int vlen = strlen(argv[3]);
+    printf("[*] Searching for: 0x...");
+    int i;
+    for(i = 0; i < vlen; i++)
+        printf("%02x", vanity[i]);
+    printf("\n");
+
+    uint32_t timestamp = find_vanity(vanity, vlen, key, keylen);
     if(!timestamp) {
         printf("[!] No key found in reasonable time range, giving up :(\n");
         return 1;
@@ -122,7 +135,6 @@ int main() {
 
     printf("[+] got it!\n");
 
-    int i;
     printf("[*] timestamp: ");
     for(i = 0; i < 4; i++)
         printf("%02x", key[4+i]);
@@ -138,7 +150,7 @@ int main() {
     printf("\n");
 
     printf("[+] Writing new public key to result.pub\n");
-    if ((fd = open("vanity.pub", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
+    if ((fd = open("result.pub", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
@@ -146,7 +158,7 @@ int main() {
     write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
     close(fd);
 
-    printf("[+] Reading secret key from input.sec\n");
+    printf("[+] Reading secret key from %s\n", argv[2]);
     if ((fd = open("input.sec", O_RDONLY, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
@@ -163,7 +175,7 @@ int main() {
     key[7] = (timestamp) & 0xff;
 
     printf("[+] Writing new secret key to result.sec\n");
-    if ((fd = open("vanity.sec", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
+    if ((fd = open("result.sec", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
