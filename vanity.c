@@ -100,8 +100,8 @@ int main() {
 
     int fd = -1;
 
-    printf("[+] Reading secret key from vanity.sec\n");
-    if ((fd = open("vanity.pub", O_RDONLY, 0)) == -1) {
+    printf("[+] Reading secret key from input.sec\n");
+    if ((fd = open("input.pub", O_RDONLY, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
@@ -138,7 +138,7 @@ int main() {
     printf("\n");
 
     printf("[+] Writing new public key to result.pub\n");
-    if ((fd = open("result.pub", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
+    if ((fd = open("vanity.pub", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
@@ -146,8 +146,8 @@ int main() {
     write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
     close(fd);
 
-    printf("[+] Reading secret key from vanity.sec\n");
-    if ((fd = open("vanity.sec", O_RDONLY, 0)) == -1) {
+    printf("[+] Reading secret key from input.sec\n");
+    if ((fd = open("input.sec", O_RDONLY, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
@@ -163,7 +163,7 @@ int main() {
     key[7] = (timestamp) & 0xff;
 
     printf("[+] Writing new secret key to result.sec\n");
-    if ((fd = open("result.sec", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
+    if ((fd = open("vanity.sec", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
