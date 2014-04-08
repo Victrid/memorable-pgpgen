@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
     printf("\n");
 
     uint32_t limit; {
-        limit = atoi(argv[3]);
+        limit = strtol(argv[3], 0, 10);
         char buf[200];
         time_t ye = limit;
         struct tm* tmp = localtime(&ye);
