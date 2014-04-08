@@ -46,10 +46,8 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen) {
             if(digest[19-i] != vanity[vlen-1-i])
                 break;
             // if we're here, we found one! yay!
-            if(i == vlen-1) {
-                printf("\n");
+            if(i == vlen-1)
                 return timestamp;
-            }
         }
         if((++counter % 10000000) == 0) {
             char buf[200];
@@ -119,6 +117,18 @@ int main(int argc, char** argv) {
 
     printf("[*] Public Key Packet Size: %d\n", keylen);
 
+    {
+        // 20 bytes digest
+        uint8_t digest[20];
+        SHA1(key, keylen, digest);
+
+        printf("[*] original figerprint: ");
+        int i;
+        for(i = 0; i < 20; i++)
+            printf("%02x", digest[i]);
+        printf("\n");
+    }
+
     uint8_t* vanity = (uint8_t*) argv[3];
     int vlen = strlen(argv[3]);
     printf("[*] Searching for: 0x...");
@@ -140,17 +150,20 @@ int main(int argc, char** argv) {
         printf("%02x", key[4+i]);
     printf("\n");
 
-    // 20 bytes digest
-    uint8_t digest[20];
-    SHA1(key, keylen, digest);
+    {
+        // 20 bytes digest
+        uint8_t digest[20];
+        SHA1(key, keylen, digest);
 
-    printf("[*] digest: ");
-    for(i = 0; i < 20; i++)
-        printf("%02x", digest[i]);
-    printf("\n");
+        printf("[*] new fingerprint: ");
+        int i;
+        for(i = 0; i < 20; i++)
+            printf("%02x", digest[i]);
+        printf("\n");
+    }
 
     printf("[+] Writing new public key to result.pub\n");
-    if ((fd = open("result.pub", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
+    if ((fd = open("result.pub", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR | S_IWUSR)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
@@ -175,7 +188,7 @@ int main(int argc, char** argv) {
     key[7] = (timestamp) & 0xff;
 
     printf("[+] Writing new secret key to result.sec\n");
-    if ((fd = open("result.sec", O_WRONLY|O_CREAT|O_TRUNC, 0)) == -1) {
+    if ((fd = open("result.sec", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR | S_IWUSR)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
