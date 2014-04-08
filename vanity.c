@@ -66,7 +66,7 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen) {
 
 }
 
-void readkey(int fd, uint8_t** key, int* keylen, uint8_t** uid, int* uidlen) {
+void readkey(int fd, uint8_t** key, int* keylen) {
 
     uint8_t buf[3];
     {
@@ -94,23 +94,6 @@ void readkey(int fd, uint8_t** key, int* keylen, uint8_t** uid, int* uidlen) {
         }
     }
 
-    // the next packet must be a uid packet
-    {
-        // read uid packet
-        read(fd, buf, 2);
-        if((buf[0] & 0x3f) >> 2 != 13) {
-            printf("[!] second packet is not a uid!\n");
-            exit(3);
-        }
-        *uidlen = buf[1];
-        *uid = (uint8_t*) malloc(sizeof(uint8_t)*(*uidlen+1));
-        *uidlen += 2;
-        memcpy(*uid, buf, 2);
-        read(fd, *uid+2, *uidlen);
-        // terminate the cstring!
-        *uid[*uidlen] = 0;
-    }
-
 }
 
 int main() {
@@ -123,14 +106,12 @@ int main() {
         return 2;
     }
 
-    int keylen, uidlen;
-    uint8_t *key, *uid;
-    readkey(fd, &key, &keylen, &uid, &uidlen);
+    int keylen;
+    uint8_t *key;
+    readkey(fd, &key, &keylen);
     close(fd);
 
     printf("[*] Public Key Packet Size: %d\n", keylen);
-    printf("[*] Uid Packet Size: %d\n", uidlen);
-    printf("[*] Uid: %s\n", uid+2);
 
     uint8_t vanity[] = { 0xc0, 0x1a, 0xde };
     uint32_t timestamp = find_vanity(vanity, 3, key, keylen);
@@ -162,7 +143,7 @@ int main() {
         return 2;
     }
     write(fd, key, keylen);
-    write(fd, uid, uidlen);
+    write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
     close(fd);
 
     printf("[+] Reading secret key from vanity.sec\n");
@@ -171,11 +152,10 @@ int main() {
         return 2;
     }
 
-    readkey(fd, &key, &keylen, &uid, &uidlen);
+    readkey(fd, &key, &keylen);
     close(fd);
 
     printf("[*] Secret Key Packet Size: %d\n", keylen);
-    printf("[*] Uid Packet Size: %d\n", uidlen);
 
     key[4] = (timestamp >> 24) & 0xff;
     key[5] = (timestamp >> 16) & 0xff;
@@ -188,7 +168,7 @@ int main() {
         return 2;
     }
     write(fd, key, keylen);
-    write(fd, uid, uidlen);
+    write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
     close(fd);
 
     printf("[+] All done!\n");
