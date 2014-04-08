@@ -8,7 +8,7 @@
 
 #include <openssl/sha.h>
 
-uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen) {
+uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen, uint32_t limit) {
 
     time_t start = time(NULL);
 
@@ -16,16 +16,7 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen) {
     uint32_t timestamp = (key[4] << 24) + (key[5] << 16) + (key[6] << 8) + key[7];
 
     // maybe make this actually variable...
-    unsigned int limit = 1262300400;
     unsigned int total = timestamp-limit;
-
-    {
-        char buf[200];
-        time_t ye = limit;
-        struct tm* tmp = localtime(&ye);
-        strftime(buf, sizeof(buf), "%F", tmp);
-        printf("[*] Searching down to %s\n", buf);
-    }
 
     unsigned int counter = 0;
     while(timestamp > limit) {
@@ -98,9 +89,8 @@ int main(int argc, char** argv) {
 
     int fd = -1;
 
-    if(argc != 4) {
-        printf("Usage: $0 keyring.pub keyring.sec vanitybytes\n");
-        printf("Example: $0 input.pub input.sec $'\\xde\\xad\\xfa\\x11\n");
+    if(argc != 5) {
+        printf("Usage: $0 keyring.pub keyring.sec timelimit vanitybytes\n");
         return 1;
     }
 
@@ -122,22 +112,31 @@ int main(int argc, char** argv) {
         uint8_t digest[20];
         SHA1(key, keylen, digest);
 
-        printf("[*] original figerprint: ");
+        printf("[*] original figerprint: 0x");
         int i;
         for(i = 0; i < 20; i++)
             printf("%02x", digest[i]);
         printf("\n");
     }
 
-    uint8_t* vanity = (uint8_t*) argv[3];
-    int vlen = strlen(argv[3]);
+    uint8_t* vanity = (uint8_t*) argv[4];
+    int vlen = strlen(argv[4]);
     printf("[*] Searching for: 0x...");
     int i;
     for(i = 0; i < vlen; i++)
         printf("%02x", vanity[i]);
     printf("\n");
 
-    uint32_t timestamp = find_vanity(vanity, vlen, key, keylen);
+    uint32_t limit; {
+        limit = atoi(argv[3]);
+        char buf[200];
+        time_t ye = limit;
+        struct tm* tmp = localtime(&ye);
+        strftime(buf, sizeof(buf), "%F", tmp);
+        printf("[*] Searching down to %s\n", buf);
+    }
+
+    uint32_t timestamp = find_vanity(vanity, vlen, key, keylen, limit);
     if(!timestamp) {
         printf("[!] No key found in reasonable time range, giving up :(\n");
         return 1;
@@ -155,7 +154,7 @@ int main(int argc, char** argv) {
         uint8_t digest[20];
         SHA1(key, keylen, digest);
 
-        printf("[*] new fingerprint: ");
+        printf("[*] new fingerprint: 0x");
         int i;
         for(i = 0; i < 20; i++)
             printf("%02x", digest[i]);
