@@ -1,0 +1,33 @@
+#!/bin/zsh
+
+if (( $# != 1 )); then
+    echo "Usage: $0 bytes"
+    return 1
+fi
+
+# rinse and repeat
+while true; do
+
+    # delete the old key (if any)
+    rm input.pub input.sec
+    # use gpg to generate a new key (we better have LOADS of entropy available!)
+    gpg --batch --gen-key <<- EOF
+	%echo Generating a basic OpenPGP key
+	Key-Type: RSA
+	Key-Length: 4096
+	Subkey-Type: RSA
+	Subkey-Length: 1024
+	Name-Real: this uid will be gone anyways
+	Name-Email: x.y@z
+	Expire-Date: 0
+	%pubring input.pub
+	%secring input.sec
+	# Do a commit here, so that we can later print "done" :-)
+	%commit
+	%echo done
+EOF
+
+    # vanity~
+    ./vanity input.pub input.sec 1262300400 $1 && break
+
+done
