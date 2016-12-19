@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     }
 
     printf("[+] Reading public key from %s\n", argv[1]);
-    if ((fd = open("input.pub", O_RDONLY, 0)) == -1) {
+    if ((fd = open(argv[1], O_RDONLY, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
     close(fd);
 
     printf("[+] Reading secret key from %s\n", argv[2]);
-    if ((fd = open("input.sec", O_RDONLY, 0)) == -1) {
+    if ((fd = open(argv[2], O_RDONLY, 0)) == -1) {
         printf("[-] open() failed");
         return 2;
     }
