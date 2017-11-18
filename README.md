@@ -29,6 +29,8 @@ addkey
 (create an RSA signing key, this will take a while)
 addkey
 (create an RSA encryption key, this will take a while)
+trust
+5 (ultimate)
 save
 ```
 
