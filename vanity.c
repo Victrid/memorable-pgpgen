@@ -18,6 +18,7 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen, uint32
     // maybe make this actually variable...
     unsigned int total = timestamp-limit;
 
+    unsigned matches[20] = {};
     unsigned int counter = 0;
     while(timestamp > limit) {
         // reduce by one
@@ -31,11 +32,15 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen, uint32
         uint8_t digest[20];
         SHA1(key, keylen, digest);
 
+
         // see if it's a vanity one
         int i;
         for(i = 0; i < vlen; i++) {
             if(digest[19-i] != vanity[vlen-1-i])
+            {
+                matches[i]++;
                 break;
+            }
             // if we're here, we found one! yay!
             if(i == vlen-1)
                 return timestamp;
@@ -47,7 +52,14 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen, uint32
             time_t ye = timestamp;
             struct tm* tmp = localtime(&ye);
             strftime(buf, sizeof(buf), "%F", tmp);
-            printf("[~] At %s, %d%% at %u kps\n", buf, (int)(((double) counter)/(total)*100), (unsigned)( counter / diff));
+            printf("[~] At %s, %d%% at %u kps. Partials:", buf, (int)(((double) counter)/(total)*100), (unsigned)( counter / diff));
+
+	    for(int i = 0 ; i < vlen ; i++)
+            {
+               printf(" %u", matches[i]);
+               matches[i] = 0;
+            }
+            printf("\n");
         }
     }
 
