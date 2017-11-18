@@ -1,0 +1,7 @@
+.*.swp
+*.pub
+*.sec
+vanity
+*.o
+core
+a.out
