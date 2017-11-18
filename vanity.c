@@ -47,7 +47,7 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen, uint32
             time_t ye = timestamp;
             struct tm* tmp = localtime(&ye);
             strftime(buf, sizeof(buf), "%F", tmp);
-            printf("[~] At %s, %d%% at %u kps\n", buf, (int)(((double) counter)/(total)*100), counter / diff);
+            printf("[~] At %s, %d%% at %u kps\n", buf, (int)(((double) counter)/(total)*100), (unsigned)( counter / diff));
         }
     }
 
@@ -60,7 +60,13 @@ void readkey(int fd, uint8_t** key, int* keylen) {
     uint8_t buf[3];
     {
         // make sure the first packet is a pubkey or seckey packet
-        read(fd, buf, 3);
+        ssize_t rc = read(fd, buf, 3);
+	if (rc < 0 || rc != 3)
+	{
+		perror("read");
+		exit(-1);
+	}
+
         if((buf[0] & 0x3f) >> 2 != 6 && (buf[0] & 0x3f) >> 2 != 5) {
             printf("[!] packet is not a pubkey or seckey!\n");
             exit(2);
@@ -75,7 +81,12 @@ void readkey(int fd, uint8_t** key, int* keylen) {
         // copy first three bytes from buf
         memcpy(*key, buf, 3);
         // read rest of the key
-        read(fd, *key+3, (*keylen)-3);
+        rc = read(fd, *key+3, (*keylen)-3);
+	if (rc < 0 || rc != (*keylen) - 3)
+	{
+		perror("read");
+		exit(-1);
+	}
 
         if((*key)[3] != 0x04) {
             printf("[!] version number != 4\n");
@@ -166,8 +177,18 @@ int main(int argc, char** argv) {
         printf("[-] open() failed");
         return 2;
     }
-    write(fd, key, keylen);
-    write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
+    ssize_t rc = write(fd, key, keylen);
+    if (rc < 0 || rc != keylen)
+    {
+	perror("write");
+	exit(-1);
+    }
+    rc = write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
+    if (rc < 0 || rc != 36)
+    {
+	perror("write");
+	exit(-1);
+    }
     close(fd);
 
     printf("[+] Reading secret key from %s\n", argv[2]);
@@ -191,8 +212,19 @@ int main(int argc, char** argv) {
         printf("[-] open() failed");
         return 2;
     }
-    write(fd, key, keylen);
-    write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
+    rc = write(fd, key, keylen);
+    if (rc < 0 || rc != keylen)
+    {
+	perror("write");
+	exit(-1);
+    }
+
+    rc = write(fd, "\xb4\x22""fake uid, replace with a valid one", 36);
+    if (rc < 0 || rc != 36)
+    {
+	perror("write");
+	exit(-1);
+    }
     close(fd);
 
     printf("[+] All done!\n");
