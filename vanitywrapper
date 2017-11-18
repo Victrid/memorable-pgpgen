@@ -1,15 +1,16 @@
-#!/bin/zsh
+#!/bin/sh
 
-if (( $# != 1 )); then
-    echo "Usage: $0 bytes"
-    return 1
+if [ $# != 1 ]; then
+    echo >&2 "Usage: $0 bytes"
+    exit 1
 fi
 
 # rinse and repeat
 while true; do
 
     # delete the old key (if any)
-    rm input.pub input.sec
+    rm -f input.pub input.sec
+
     # use gpg to generate a new key (we better have LOADS of entropy available!)
     gpg --batch --gen-key <<- EOF
 	%echo Generating a basic OpenPGP key
