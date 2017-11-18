@@ -31,6 +31,8 @@ addkey
 (create an RSA encryption key, this will take a while)
 trust
 5 (ultimate)
+passwd
+(input your password)
 save
 ```
 
