@@ -6,7 +6,7 @@ This works by generating a key and then adjusting the creation date until it fin
 
 ## Old version
 
-The original version by [Valodim](https://github.com/Valodim/pgp-vanity-keygen) is outdated. GnuPG's 2.1 and newer version don't use the *secring* for secret keys storage anymore (*Cf.* [GnuPG](https://www.gnupg.org/faq/whats-new-in-2.1.html#nosecring)). I've modified the generation script to 
+The original version by [Valodim](https://github.com/Valodim/pgp-vanity-keygen) is outdated. GnuPG's 2.1 and newer version don't use the *secring* for secret keys storage anymore (*Cf.* [GnuPG](https://www.gnupg.org/faq/whats-new-in-2.1.html#nosecring)). The generation script is modified to fit the update. The input method is also modified for easy use.
 
 ## Usage
 
@@ -36,7 +36,6 @@ gpg --homedir ./result --allow-non-selfsigned-uid --import private.key
 View your generated keys:
 
 ```sh
-mkdir --mode 700 result
 gpg --homedir ./result --list-keys
 ```
 

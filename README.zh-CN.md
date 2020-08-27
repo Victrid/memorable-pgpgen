@@ -38,7 +38,6 @@ gpg --homedir ./result --allow-non-selfsigned-uid --import private.key
 查看您生成的密钥：
 
 ```sh
-mkdir --mode 700 result
 gpg --homedir ./result --list-keys
 ```
 
