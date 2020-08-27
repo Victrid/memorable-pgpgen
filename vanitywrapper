@@ -23,11 +23,12 @@ while true; do
 	Expire-Date: 0
 	%pubring input.pub
 	%secring input.sec
+	Passphrase: abc
 	# Do a commit here, so that we can later print "done" :-)
 	%commit
 	%echo done
 EOF
-
+    gpg --keyring ./input.pub --export-secret-keys > ./input.sec
     # vanity~
     ./vanity input.pub input.sec 1262300400 $1 && break
 
