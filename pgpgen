@@ -1,9 +1,14 @@
 #!/bin/sh
 
 if [ $# != 1 ]; then
-    echo >&2 "Usage: $0 bytes"
+    echo >&2 "Usage: $0 hexadecimal"
+    echo >&2 "Example: $0 DEADBEEF"
     exit 1
 fi
+
+abk=$(echo -ne "$(echo $1 | sed -e 's/../\\x&/g')")
+
+mkdir --mode 700 -p gpg
 
 # rinse and repeat
 while true; do
@@ -12,8 +17,9 @@ while true; do
     rm -f input.pub input.sec
 
     # use gpg to generate a new key (we better have LOADS of entropy available!)
-    gpg --batch --gen-key <<- EOF
+    gpg --homedir ./gpg --batch --gen-key <<- EOF
 	%echo Generating a basic OpenPGP key
+	%no-protection
 	Key-Type: RSA
 	Key-Length: 4096
 	Subkey-Type: RSA
@@ -23,13 +29,16 @@ while true; do
 	Expire-Date: 0
 	%pubring input.pub
 	%secring input.sec
-	Passphrase: abc
 	# Do a commit here, so that we can later print "done" :-)
 	%commit
 	%echo done
 EOF
-    gpg --keyring ./input.pub --export-secret-keys > ./input.sec
+    echo abc | gpg --homedir ./gpg --keyring ./input.pub --export-secret-keys --yes --batch --passphrase-fd 0 > ./input.sec
     # vanity~
-    ./vanity input.pub input.sec 1262300400 $1 && break
+    ./vanity input.pub input.sec 1262300400 $abk && break
 
 done
+
+gpg --homedir ./gpg --allow-non-selfsigned-uid --import result.sec
+gpg --home ./gpg --armor --export-secret-keys >> private.key
+rm -rf ./gpg
