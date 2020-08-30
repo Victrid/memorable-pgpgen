@@ -21,5 +21,5 @@ NVCC=nvcc
 # 		$(OPENSSL_CFLAGS) \
 # 		$(OPENSSL_LIBS) \
 
-vanity: vanity_cuda.cu sha1_cpu.cu
+vanity: vanity_cuda.cu sha1.cu
 	$(NVCC) $(CUDAFLAGS) vanity_cuda.cu sha1.cu -o vanity

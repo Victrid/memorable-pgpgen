@@ -11,29 +11,38 @@
 
 using namespace std;
 
+#define __THREADNUM__ 256
+#define __BLOCKNUM__ 8
+
 __global__ void vanity_check(uint32_t timestamp_base, uint8_t* key, int keylen,
                              bool* resultblk, uint8_t* vanity, int vlen) {
-    uint32_t timestamp = timestamp_base + 500 * blockIdx.x + threadIdx.x;
-    uint8_t* sepkey;
-    sepkey = (uint8_t*)malloc(keylen * sizeof(uint8_t));
+    uint32_t timestamp =
+        timestamp_base + __THREADNUM__ * blockIdx.x + threadIdx.x;
+
+    uint8_t* sepkey = (uint8_t*)malloc(keylen * sizeof(uint8_t));
     memcpy(sepkey, key, keylen * sizeof(uint8_t));
+
     sepkey[4] = (timestamp >> 24) & 0xff;
     sepkey[5] = (timestamp >> 16) & 0xff;
     sepkey[6] = (timestamp >> 8) & 0xff;
     sepkey[7] = (timestamp)&0xff;
+
     uint8_t digest[20];
     sha1ss(sepkey, keylen, digest);
+
     for (int i = 0; i < vlen; i++) {
         if (digest[19 - i] != vanity[vlen - 1 - i]) {
             break;
         }
         // if we're here, we found one! yay!
         if (i == vlen - 1) {
-            resultblk[500 * blockIdx.x + threadIdx.x] = 1;
+            resultblk[__THREADNUM__ * blockIdx.x + threadIdx.x] = 1;
+            free(sepkey);
             return;
         }
     }
-    resultblk[500 * blockIdx.x + threadIdx.x] = 0;
+    resultblk[__THREADNUM__ * blockIdx.x + threadIdx.x] = 0;
+    free(sepkey);
     return;
 }
 
@@ -56,26 +65,24 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen,
 
     while (timestamp > limit) {
         // reduce by one
-        timestamp -= 2000;
-        key[4] = (timestamp >> 24) & 0xff;
-        key[5] = (timestamp >> 16) & 0xff;
-        key[6] = (timestamp >> 8) & 0xff;
-        key[7] = (timestamp)&0xff;
+        timestamp -= __BLOCKNUM__ * __THREADNUM__;
 
         // calculate hash with new data
 
         bool* resultblk;
-        cudaMallocManaged(&resultblk, sizeof(bool) * 2000);
-        memset(resultblk, 0, 2000 * sizeof(bool));
+        cudaMallocManaged(&resultblk,
+                          sizeof(bool) * __BLOCKNUM__ * __THREADNUM__);
+        memset(resultblk, 0, __BLOCKNUM__ * __THREADNUM__ * sizeof(bool));
 
-        vanity_check<<<4, 500>>>(timestamp, GPUkey, keylen, resultblk,
-                                 GPUvanity, vlen);
-
+        vanity_check<<<__BLOCKNUM__, __THREADNUM__>>>(
+            timestamp, GPUkey, keylen, resultblk, GPUvanity, vlen);
         cudaDeviceSynchronize();
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 0; i < __BLOCKNUM__ * __THREADNUM__; i++) {
             // if we're here, we found one! yay!
             if (resultblk[i]) {
                 cudaFree(resultblk);
+                cudaFree(GPUkey);
+                cudaFree(GPUvanity);
                 return timestamp + i;
             }
         }
@@ -171,6 +178,7 @@ int main(int argc, char** argv) {
     }
 
     printf("[+] got it!\n");
+
     key[4] = (timestamp >> 24) & 0xff;
     key[5] = (timestamp >> 16) & 0xff;
     key[6] = (timestamp >> 8) & 0xff;
@@ -178,29 +186,8 @@ int main(int argc, char** argv) {
 
     printf("[*] timestamp: ");
     for (i = 0; i < 4; i++)
-        printf("%02x", key[4 + i]);
+        printf("%x", timestamp);
     printf("\n");
-
-    printf("[+] Writing new public key to result.pub\n");
-    if ((fd = open("result.pub", O_WRONLY | O_CREAT | O_TRUNC,
-                   S_IRUSR | S_IWUSR)) == -1) {
-        printf("[-] open() failed");
-        return 2;
-    }
-    ssize_t rc = write(fd, key, keylen);
-    if (rc < 0 || rc != keylen) {
-        perror("write");
-        exit(-1);
-    }
-    rc = write(fd,
-               "\xb4\x22"
-               "fake uid, replace with a valid one",
-               36);
-    if (rc < 0 || rc != 36) {
-        perror("write");
-        exit(-1);
-    }
-    close(fd);
 
     printf("[+] Reading secret key from %s\n", argv[2]);
     if ((fd = open(argv[2], O_RDONLY, 0)) == -1) {
@@ -224,7 +211,7 @@ int main(int argc, char** argv) {
         printf("[-] open() failed");
         return 2;
     }
-    rc = write(fd, key, keylen);
+    int rc = write(fd, key, keylen);
     if (rc < 0 || rc != keylen) {
         perror("write");
         exit(-1);
