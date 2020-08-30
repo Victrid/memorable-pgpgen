@@ -1,0 +1,1 @@
+__device__ void sha1ss(unsigned char *input, int ilen, unsigned char *output);
