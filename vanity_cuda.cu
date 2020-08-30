@@ -11,8 +11,12 @@
 
 using namespace std;
 
-#define __THREADNUM__ 256
-#define __BLOCKNUM__ 16
+#ifndef __THREADNUM__
+    #define __THREADNUM__ 256
+#endif
+#ifndef __BLOCKNUM__
+    #define __BLOCKNUM__ 16
+#endif
 
 __global__ void vanity_check(uint32_t timestamp_base, uint8_t* key, int keylen,
                              bool* resultblk, uint8_t* vanity, int vlen) {
@@ -47,15 +51,21 @@ __global__ void vanity_check(uint32_t timestamp_base, uint8_t* key, int keylen,
     return;
 }
 
+char buf[200];
+
 uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen,
                      uint32_t limit) {
 
     time_t start = time(NULL);
 
+    unsigned int counter = 0;
+
     // 5 to 8 are the timestamp (the interesting bit!)
     uint32_t timestamp =
         (key[4] << 24) + (key[5] << 16) + (key[6] << 8) + key[7];
-
+    
+    unsigned int total = timestamp - limit;
+    
     uint8_t* GPUvanity;
     cudaMallocManaged(&GPUvanity, vlen * sizeof(uint8_t));
     memcpy(GPUvanity, vanity, vlen * sizeof(uint8_t));
@@ -65,13 +75,14 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen,
     while (timestamp > limit) {
         // reduce by one
         timestamp -= __BLOCKNUM__ * __THREADNUM__;
-
+        counter += __BLOCKNUM__ * __THREADNUM__;
         // calculate hash with new data
         memset(resultblk, 0, __BLOCKNUM__ * __THREADNUM__ * sizeof(bool));
 
         vanity_check<<<__BLOCKNUM__, __THREADNUM__>>>(
             timestamp, key, keylen, resultblk, GPUvanity, vlen);
         cudaDeviceSynchronize();
+
         for (int i = 0; i < __BLOCKNUM__ * __THREADNUM__; i++) {
             // if we're here, we found one! yay!
             if (resultblk[i]) {
@@ -79,6 +90,16 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen,
                 cudaFree(GPUvanity);
                 return timestamp + i;
             }
+        }
+        if ((counter % 100000) == 0) {
+            time_t diff = time(NULL) - start + 1;
+
+            time_t ye      = timestamp;
+            struct tm* tmp = localtime(&ye);
+            strftime(buf, sizeof(buf), "%F", tmp);
+            printf("[~] At %s, %d%% at %u kps.\n", buf,
+                   (int)(((double)counter) / (total)*100),
+                   (unsigned)(counter / diff));
         }
     }
     cudaFree(resultblk);

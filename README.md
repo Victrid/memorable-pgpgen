@@ -4,9 +4,25 @@
 
 This works by generating a key and then adjusting the creation date until it finds something that hashes to the desired ending values.
 
-## Old version
+This generator uses GPU to achieve high-speed operation of keys through CUDA. After testing, in the device configuration shown in the table below, the version implemented with GPU is 3 to 4 times faster than the version implemented with CPU.
 
-The original version by [Valodim](https://github.com/Valodim/pgp-vanity-keygen) is outdated. GnuPG's 2.1 and newer version don't use the *secring* for secret keys storage anymore (*Cf.* [GnuPG](https://www.gnupg.org/faq/whats-new-in-2.1.html#nosecring)). The generation script is modified to fit the update. The input method is also modified for easy use.
+|      CPU       |         GPU         |
+| :------------: | :-----------------: |
+| Intel i7-5500U | NVIDIA GeForce 940M |
+
+## Versions
+
+The original version by [Valodim](https://github.com/Valodim/pgp-vanity-keygen) is outdated. GnuPG's 2.1 and newer version don't use the *secring* for secret keys storage anymore (*Cf.* [GnuPG](https://www.gnupg.org/faq/whats-new-in-2.1.html#nosecring)). The version located in the `traditional` branch has been modified for this update and the input logic has been modified for easy use.
+
+The version located in the `main` branch requires CUDA to be installed to compile. If you do not have the conditions to run, please use the general `traditional` branch version.
+
+You need to manually modify the `nvcc` compilation flag in the `Makefile` file. The flag is like this:
+
+`CUDAFLAGS= -O3 -rdc=true -gencode arch=compute_50,code=sm_50`
+
+In the device configuration in the above table, the graphics card `NVIDIA GeForce 940M` is not compatible with the latest CUDA default configuration due to low compute capability, so these items have been added to compile. You should first remove `-gencode` and everything afterwards and try to run it. If error occured, please check the compute capability of your graphics card via [here](https://developer.nvidia.com/cuda-gpus), and modify `-gencode` accordingly.
+
+A simple way to check whether it can run normally is to compile according to the following usage method and enter `./pgpgen AA`. This command will be completed in a short time. Check the import message of the GPG at the latter part in the output of the command and check whether the key fingerprint ends with `AA`.
 
 ## Usage
 
