@@ -8,7 +8,7 @@ clean_credential:
 OPENSSL_CFLAGS := `pkg-config --cflags openssl`
 OPENSSL_LIBS := `pkg-config --libs openssl`
 
-CUDAFLAGS= -gencode arch=compute_50,code=sm_50 -rdc=true
+CUDAFLAGS= -O3 -gencode arch=compute_50,code=sm_50 -rdc=true
 NVCC=nvcc
 
 # vanity: vanity.c

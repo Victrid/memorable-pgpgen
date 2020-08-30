@@ -12,14 +12,15 @@
 using namespace std;
 
 #define __THREADNUM__ 256
-#define __BLOCKNUM__ 8
+#define __BLOCKNUM__ 16
 
 __global__ void vanity_check(uint32_t timestamp_base, uint8_t* key, int keylen,
                              bool* resultblk, uint8_t* vanity, int vlen) {
     uint32_t timestamp =
         timestamp_base + __THREADNUM__ * blockIdx.x + threadIdx.x;
 
-    uint8_t* sepkey = (uint8_t*)malloc(keylen * sizeof(uint8_t));
+    // uint8_t* sepkey = (uint8_t*)malloc(keylen * sizeof(uint8_t));
+    uint8_t sepkey[528] = {};
     memcpy(sepkey, key, keylen * sizeof(uint8_t));
 
     sepkey[4] = (timestamp >> 24) & 0xff;
@@ -55,40 +56,32 @@ uint32_t find_vanity(uint8_t* vanity, int vlen, uint8_t* key, int keylen,
     uint32_t timestamp =
         (key[4] << 24) + (key[5] << 16) + (key[6] << 8) + key[7];
 
-    uint8_t* GPUkey;
-    cudaMallocManaged(&GPUkey, keylen * sizeof(uint8_t));
-    memcpy(GPUkey, key, keylen * sizeof(uint8_t));
-
     uint8_t* GPUvanity;
     cudaMallocManaged(&GPUvanity, vlen * sizeof(uint8_t));
     memcpy(GPUvanity, vanity, vlen * sizeof(uint8_t));
+    bool* resultblk;
+    cudaMallocManaged(&resultblk, sizeof(bool) * __BLOCKNUM__ * __THREADNUM__);
 
     while (timestamp > limit) {
         // reduce by one
         timestamp -= __BLOCKNUM__ * __THREADNUM__;
 
         // calculate hash with new data
-
-        bool* resultblk;
-        cudaMallocManaged(&resultblk,
-                          sizeof(bool) * __BLOCKNUM__ * __THREADNUM__);
         memset(resultblk, 0, __BLOCKNUM__ * __THREADNUM__ * sizeof(bool));
 
         vanity_check<<<__BLOCKNUM__, __THREADNUM__>>>(
-            timestamp, GPUkey, keylen, resultblk, GPUvanity, vlen);
+            timestamp, key, keylen, resultblk, GPUvanity, vlen);
         cudaDeviceSynchronize();
         for (int i = 0; i < __BLOCKNUM__ * __THREADNUM__; i++) {
             // if we're here, we found one! yay!
             if (resultblk[i]) {
                 cudaFree(resultblk);
-                cudaFree(GPUkey);
                 cudaFree(GPUvanity);
                 return timestamp + i;
             }
         }
-        cudaFree(resultblk);
     }
-    cudaFree(GPUkey);
+    cudaFree(resultblk);
     cudaFree(GPUvanity);
     return 0;
 }
@@ -114,7 +107,7 @@ void readkey(int fd, uint8_t** key, int* keylen) {
         *keylen += 3;
 
         // assuming we work with 4096 keys at most
-        *key = (uint8_t*)malloc(sizeof(uint8_t) * *keylen);
+        cudaMallocManaged(&(*key), sizeof(uint8_t) * *keylen);
         // copy first three bytes from buf
         memcpy(*key, buf, 3);
         // read rest of the key
